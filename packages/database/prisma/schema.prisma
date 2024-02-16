@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Needed for Auth.js
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  emailVerified    DateTime?
+  image            String?
+  onboarded        Boolean   @default(false)
+  maxRadioStations Int       @default(1)
+  createdAt        DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+}
+
+// Needed for Auth.js
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_in        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Needed for Auth.js
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Needed for Auth.js
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Event {
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String?
+  date          DateTime
+  end           DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  venue         Venue     @relation(fields: [venueId], references: [id])
+  venueId       Int
+  parentEvent   Event?    @relation("EventInEvent", fields: [parentEventId], references: [id])
+  parentEventId Int?
+  subEvent      Event[]   @relation("EventInEvent")
+  media         Media[]
+  stage         Stage?    @relation(fields: [stageId], references: [id])
+  stageId       Int?
+}
+
+model Media {
+  id        Int        @id @default(autoincrement())
+  url       String
+  type      MEDIA_TYPE
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  event     Event      @relation(fields: [eventId], references: [id])
+  eventId   Int
+}
+
+enum MEDIA_TYPE {
+  IMAGE
+  VIDEO
+  YT_VIDEO
+}
+
+model Stage {
+  id        Int        @id @default(autoincrement())
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  events    Event[]
+  type      STAGE_TYPE
+  venue     Venue      @relation(fields: [venueId], references: [id])
+  venueId   Int
+  capacity  Int?
+}
+
+enum STAGE_TYPE {
+  MAIN
+  SECONDARY
+  OTHER
+}
+
+model Venue {
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String?
+  profileImage String?
+  coverImage   String?
+  type         VENUE_TYPE
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  events       Event[]
+  stages       Stage[]
+
+  city      String?
+  road      String?
+  number    String?
+  latitude  Float?
+  longitude Float?
+}
+
+enum VENUE_TYPE {
+  CLUB
+  BAR
+  THEATER
+  STADIUM
+  FESTIVAL
+  OTHER
+}
